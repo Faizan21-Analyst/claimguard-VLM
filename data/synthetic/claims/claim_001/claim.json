@@ -1,0 +1,8 @@
+{
+  "claim_id": "claim_001",
+  "policy_id": "policy_A",
+  "claimed_damage_type": "hail",
+  "component": "roof_shingles",
+  "incident_date": "2026-06-10",
+  "description": "Hailstorm reportedly damaged roof shingles."
+}

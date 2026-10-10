@@ -1,0 +1,8 @@
+{
+  "claim_id": "claim_006",
+  "policy_id": "policy_A",
+  "claimed_damage_type": "wind",
+  "component": "roof_shingles",
+  "incident_date": "2026-06-22",
+  "description": "Strong winds reportedly damaged roof shingles."
+}

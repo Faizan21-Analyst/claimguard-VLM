@@ -1,0 +1,8 @@
+{
+  "claim_id": "claim_002",
+  "policy_id": "policy_A",
+  "claimed_damage_type": "hail",
+  "component": "roof_shingles",
+  "incident_date": "2026-06-12",
+  "description": "Roof shingle damage reported after suspected hail."
+}

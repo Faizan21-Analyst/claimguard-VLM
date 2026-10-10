@@ -1,0 +1,8 @@
+{
+  "claim_id": "claim_005",
+  "policy_id": "policy_B",
+  "claimed_damage_type": "water",
+  "component": "ceiling",
+  "incident_date": "2026-06-20",
+  "description": "A sudden water leak reportedly damaged the ceiling."
+}
