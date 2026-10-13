@@ -20,6 +20,18 @@ class RagSettings(BaseSettings):
     top_k: int = Field(default=4, ge=1)
     min_relevance: float = Field(default=0.72, ge=0, le=1)
 
+class VlmSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="VLM_",
+        env_file=ROOT_DIR / ".env",
+        extra="ignore",
+    )
+
+    backend: str = "groq"
+    vision_model: str = "qwen/qwen3.8-27b"
+    max_tokens: int = Field(default=1500, ge=1)
+    max_image_side: int = Field(default=1024, ge=64)
+
 class GroqSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="GROQ_",
@@ -35,7 +47,7 @@ class GroqSettings(BaseSettings):
 class AppSettings(BaseSettings):
     groq: GroqSettings = Field(default_factory=GroqSettings)
     rag: RagSettings = Field(default_factory=RagSettings)
-
+    vlm: VlmSettings = Field(default_factory=VlmSettings)   # NEW
 
 @lru_cache
 def load_settings() -> AppSettings:
