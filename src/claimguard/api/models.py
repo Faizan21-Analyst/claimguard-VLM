@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator,model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from claimguard.schemas.claim import ClaimAssessment
 
@@ -21,6 +21,7 @@ class ReviewRequest(BaseModel):
             raise ValueError("An override requires a non-empty note.")
         return self
 
+
 class ReviewRecord(BaseModel):
     id: int
     action: Literal["accept", "request_more", "override"]
@@ -32,4 +33,4 @@ class AssessmentRecord(BaseModel):
     id: int
     created_at: datetime
     assessment: ClaimAssessment
-    reviews: list[ReviewRecord] = []
+    reviews: list[ReviewRecord] = Field(default_factory=list)

@@ -1,4 +1,3 @@
-import json
 import shutil
 from pathlib import Path
 
@@ -9,7 +8,6 @@ from groq import APIConnectionError
 
 from claimguard.api.main import create_app
 from claimguard.schemas.claim import ClaimAssessment
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEMO_CLAIMS = REPO_ROOT / "data" / "synthetic" / "claims"
@@ -68,6 +66,12 @@ def test_health_and_list_claims(client):
     )
 
 
+def test_folder_without_claim_json_is_not_listed(client, claims_dir):
+    (claims_dir / "empty_folder").mkdir()
+
+    assert "empty_folder" not in client.get("/claims").json()
+
+
 def test_analyze_and_read_assessment(client):
     response = client.post("/claims/claim_001/analyze")
     assert response.status_code == 200
@@ -95,10 +99,27 @@ def test_analyzing_twice_creates_two_audit_records(client):
     assert history.json()[0]["id"] == second.json()["id"]
 
 
-def test_unknown_and_unsafe_claim_ids_return_404(client):
+def test_unknown_claim_id_returns_404(client):
     assert client.post("/claims/not_a_claim/analyze").status_code == 404
-    assert client.post("/claims/../analyze").status_code in (404, 405)
-    assert client.get("/claims/../assessments").status_code in (404, 405)
+
+
+def test_history_for_unknown_claim_returns_404(client):
+    assert client.get("/claims/nope/assessments").status_code == 404
+
+
+def test_unsafe_claim_ids_are_blocked_by_the_guard(tmp_path, claims_dir):
+    # A real claim.json sits OUTSIDE the claims folder, so only the guard stands in the way.
+    # (A literal "../" would be rewritten by the HTTP client before reaching the app,
+    # so we use the percent-encoded forms that do reach it.)
+    outside = tmp_path / "claim_outside"
+    outside.mkdir()
+    shutil.copy(claims_dir / "claim_001" / "claim.json", outside / "claim.json")
+
+    app = create_app(db_path=tmp_path / "audit.db", claims_dir=claims_dir, graph=FakeGraph())
+    with TestClient(app) as test_client:
+        assert test_client.post("/claims/%2e%2e/analyze").status_code == 404
+        assert test_client.post("/claims/..%2Fclaim_outside/analyze").status_code == 404
+        assert test_client.post("/claims/claim.001/analyze").status_code == 404
 
 
 def test_broken_claim_json_returns_422(tmp_path, claims_dir):
@@ -117,10 +138,8 @@ def test_broken_claim_json_returns_422(tmp_path, claims_dir):
     assert response.status_code == 422
 
 
-def test_groq_api_error_returns_generic_502(tmp_path, claims_dir):
-    error = APIConnectionError(
-        request=httpx.Request("POST", "https://example.com")
-    )
+def test_groq_api_error_returns_generic_502_and_saves_nothing(tmp_path, claims_dir):
+    error = APIConnectionError(request=httpx.Request("POST", "https://example.com"))
     app = create_app(
         db_path=tmp_path / "audit.db",
         claims_dir=claims_dir,
@@ -130,9 +149,10 @@ def test_groq_api_error_returns_generic_502(tmp_path, claims_dir):
     with TestClient(app) as test_client:
         response = test_client.post("/claims/claim_001/analyze")
 
-    assert response.status_code == 502
-    assert "traceback" not in response.text.lower()
-    assert "sk-" not in response.text
+        assert response.status_code == 502
+        assert response.json() == {"detail": "The assessment service is temporarily unavailable."}
+        # A failed analysis must leave no audit record behind.
+        assert test_client.get("/claims/claim_001/assessments").json() == []
 
 
 def test_unexpected_error_returns_500(tmp_path, claims_dir):
@@ -165,6 +185,19 @@ def test_review_is_saved_and_returned(client):
     assert fetched.json()["reviews"][0]["note"] == "Reviewed."
 
 
+def test_review_never_changes_the_stored_assessment(client):
+    created = client.post("/claims/claim_001/analyze").json()
+
+    reviewed = client.post(
+        f"/assessments/{created['id']}/review",
+        json={"action": "accept", "note": "ok"},
+    ).json()
+
+    assert reviewed["assessment"] == created["assessment"]
+    assert created["reviews"] == []
+    assert len(reviewed["reviews"]) == 1
+
+
 @pytest.mark.parametrize(
     "body",
     [
@@ -175,18 +208,12 @@ def test_review_is_saved_and_returned(client):
 )
 def test_invalid_review_body_returns_422(client, body):
     created = client.post("/claims/claim_001/analyze").json()
-    response = client.post(
-        f"/assessments/{created['id']}/review",
-        json=body,
-    )
+    response = client.post(f"/assessments/{created['id']}/review", json=body)
     assert response.status_code == 422
 
 
 def test_review_for_unknown_assessment_returns_404(client):
-    response = client.post(
-        "/assessments/999999/review",
-        json={"action": "accept"},
-    )
+    response = client.post("/assessments/999999/review", json={"action": "accept"})
     assert response.status_code == 404
 
 

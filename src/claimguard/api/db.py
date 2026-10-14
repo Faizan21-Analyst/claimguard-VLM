@@ -1,10 +1,9 @@
-import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-from contextlib import contextmanager
-from typing import Iterator
+from typing import Any, Iterator
+
 from claimguard.schemas.claim import ClaimAssessment
 
 
@@ -25,6 +24,7 @@ def _connect(path: Path | str) -> Iterator[sqlite3.Connection]:
         raise
     finally:
         conn.close()
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -60,12 +60,24 @@ def init_db(path: Path | str) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_reviews_assessment
             ON reviews (assessment_id, id);
+
+            -- Audit rule enforced by the database itself: assessments are append-only.
+            CREATE TRIGGER IF NOT EXISTS assessments_no_update
+            BEFORE UPDATE ON assessments
+            BEGIN
+                SELECT RAISE(ABORT, 'assessments are append-only');
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS assessments_no_delete
+            BEFORE DELETE ON assessments
+            BEGIN
+                SELECT RAISE(ABORT, 'assessments are append-only');
+            END;
             """
         )
 
 
 def save_assessment(path: Path | str, assessment: ClaimAssessment) -> int:
-    assessment_json = assessment.model_dump_json()
     with _connect(path) as conn:
         cursor = conn.execute(
             """
@@ -77,7 +89,7 @@ def save_assessment(path: Path | str, assessment: ClaimAssessment) -> int:
                 assessment.claim_id,
                 assessment.model_version,
                 assessment.decision,
-                assessment_json,
+                assessment.model_dump_json(),
                 _utc_now(),
             ),
         )
@@ -97,10 +109,7 @@ def get_assessment(path: Path | str, assessment_id: int) -> dict[str, Any] | Non
         return _row_to_dict(row)
 
 
-def list_assessments(
-    path: Path | str,
-    claim_id: str,
-) -> list[dict[str, Any]]:
+def list_assessments(path: Path | str, claim_id: str) -> list[dict[str, Any]]:
     with _connect(path) as conn:
         rows = conn.execute(
             """

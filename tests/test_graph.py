@@ -68,6 +68,8 @@ def demo_environment(tmp_path_factory):
     for claim_dir in sorted(claims_dir.glob("claim_*")):
         images_dir = claim_dir / "images"
         images_dir.mkdir(parents=True, exist_ok=True)
+        for leftover in list(images_dir.iterdir()):  # drop real photos copied from your machine
+            leftover.unlink()
         Image.new("RGB", (64, 64), color=(160, 160, 160)).save(
             images_dir / "demo.JPG", format="JPEG"
         )

@@ -24,12 +24,21 @@ def test_init_db_is_safe_to_call_twice(tmp_path):
     with sqlite3.connect(path) as conn:
         tables = {
             row[0]
-            for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
 
     assert {"assessments", "reviews"}.issubset(tables)
+
+
+def test_database_still_works_after_double_init(tmp_path):
+    path = tmp_path / "audit.db"
+    db.init_db(path)
+    db.init_db(path)
+
+    assessment_id = db.save_assessment(path, make_assessment())
+    db.save_review(path, assessment_id, "accept", "")
+
+    assert len(db.get_reviews(path, assessment_id)) == 1
 
 
 def test_assessment_round_trip(tmp_path):
@@ -76,3 +85,21 @@ def test_review_does_not_modify_assessment_json(tmp_path):
 
     assert after == before
     assert len(db.get_reviews(path, assessment_id)) == 1
+
+
+def test_assessments_are_append_only(tmp_path):
+    # The database itself refuses edits, even from code that bypasses db.py.
+    path = tmp_path / "audit.db"
+    db.init_db(path)
+    assessment_id = db.save_assessment(path, make_assessment())
+
+    with sqlite3.connect(path) as raw:
+        with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+            raw.execute(
+                "UPDATE assessments SET decision = 'needs_review' WHERE id = ?",
+                (assessment_id,),
+            )
+        with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+            raw.execute("DELETE FROM assessments WHERE id = ?", (assessment_id,))
+
+    assert db.get_assessment(path, assessment_id)["decision"] == "supported"
