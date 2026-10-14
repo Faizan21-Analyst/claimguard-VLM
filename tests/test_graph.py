@@ -167,15 +167,42 @@ def test_summary_failure_does_not_crash_or_change_decision(demo_environment):
     assert assessment.decision == "supported"
 
 
+
 def test_non_image_files_in_images_folder_are_ignored(demo_environment, tmp_path):
     claim_dir = tmp_path / "claim_001"
-    shutil.copytree(demo_environment["claims_dir"] / "claim_001", claim_dir)
-    (claim_dir / "images" / "notes.txt").write_text("not an image", encoding="utf-8")
-    (claim_dir / "images" / ".gitkeep").touch()
 
-    assessment = analyze_claim(make_graph(demo_environment), claim_dir)
+    shutil.copytree(
+        demo_environment["claims_dir"] / "claim_001",
+        claim_dir,
+    )
 
-    assert len(assessment.visual) == 1
+    image_dir = claim_dir / "images"
+
+    # Add files that must be ignored by the vision pipeline.
+    (image_dir / "notes.txt").write_text(
+        "not an image",
+        encoding="utf-8",
+    )
+    (image_dir / ".gitkeep").touch()
+
+    # Count the actual supported image files in this claim.
+    supported_extensions = {".jpg", ".jpeg", ".png"}
+    valid_image_count = sum(
+        1
+        for path in image_dir.iterdir()
+        if path.is_file()
+        and path.suffix.lower() in supported_extensions
+    )
+
+    assessment = analyze_claim(
+        make_graph(demo_environment),
+        claim_dir,
+    )
+
+    # Each valid image should produce a visual finding.
+    # Non-image files must not produce additional findings.
+    assert len(assessment.visual) == valid_image_count
+
 
 
 def test_model_version_matches_vlm(demo_environment):

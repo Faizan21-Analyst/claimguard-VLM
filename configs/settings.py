@@ -6,7 +6,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[1]  # repo root (configs/ is one level down)
 
+class ApiSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="API_",
+        env_file=ROOT_DIR / ".env",
+        extra="ignore",
+    )
 
+    db_path: Path = ROOT_DIR / "data" / "processed" / "claimguard.db"
+    claims_dir: Path = ROOT_DIR / "data" / "synthetic" / "claims"
 
 class RagSettings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -48,7 +56,8 @@ class AppSettings(BaseSettings):
     groq: GroqSettings = Field(default_factory=GroqSettings)
     rag: RagSettings = Field(default_factory=RagSettings)
     vlm: VlmSettings = Field(default_factory=VlmSettings)   # NEW
-
+    api: ApiSettings = Field(default_factory=ApiSettings)
+    
 @lru_cache
 def load_settings() -> AppSettings:
     """Load settings once; later calls return the same object."""
