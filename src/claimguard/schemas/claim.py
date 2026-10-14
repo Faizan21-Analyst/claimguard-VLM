@@ -27,3 +27,4 @@ class ClaimAssessment(BaseModel):
     weather: WeatherEvidence | None = None
     missing_evidence: list[str] = Field(default_factory=list)
     model_version: str = ""
+    summary: str = ""

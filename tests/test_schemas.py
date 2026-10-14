@@ -51,3 +51,12 @@ def test_bad_incident_date_is_rejected():
         Claim(claim_id="CG-001", policy_id="policy_A",
               claimed_damage_type="hail", incident_date="2026-13-45")
     assert failed_fields(e) == {"incident_date"}
+
+def test_claim_assessment_summary_defaults_to_empty():
+    assessment = ClaimAssessment(
+        claim_id="claim_test",
+        decision="needs_review",
+        reasons=["Weather evidence is missing."],
+    )
+
+    assert assessment.summary == ""
