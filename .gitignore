@@ -221,3 +221,15 @@ data/synthetic/claims/*/images/*
 data/processed
 models/
 mlruns/
+# Module 9: image folders (labels.csv, golden.jsonl and LABELING.md stay tracked)
+data/raw/images/
+data/golden/images/
+# Module 11: Colab upload bundle, downloaded adapter zips, eval result dumps, model weights
+colab_bundle.zip
+adapter_*.zip
+results/
+*.safetensors
+# "Try your own claim": uploaded photos and the user-claims database (if placed inside the repo)
+data/user_claims/
+user_claims/
+user_claims.db

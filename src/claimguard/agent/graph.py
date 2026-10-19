@@ -27,15 +27,44 @@ class ClaimState(TypedDict, total=False):
     assessment: ClaimAssessment
 
 
+def _summary_facts(state: ClaimState) -> list[str]:
+    """Plain facts for the reasoning model (live claims only): what each photo showed + the weather numbers."""
+    facts = []
+    for number, f in enumerate(state.get("findings", []), start=1):
+        if f.damage_type == "unclear" or f.image_quality == "poor":
+            facts.append(f"Photo {number}: could not be judged (unclear or poor quality).")
+        else:
+            facts.append(
+                f"Photo {number}: {f.damage_type.replace('_', ' ')} damage, severity {f.severity}, "
+                f"part {f.component.replace('_', ' ')}."
+            )
+    weather = state.get("weather")
+    if weather is not None and weather.details:
+        verdict = "supports the claimed event" if weather.found else "does not confirm the claimed event"
+        facts.append(f"Weather data {verdict}: {weather.details}")
+    return facts
+
+
 def build_graph(
     vlm,
     chroma_dir: Path | str | None = None,
     summarizer=summarize,
+    weather_tool=weather_check_tool,
+    rich_summary: bool = False,
+    policy_tool=None,
 ):
     """Build the straight-line pipeline: vision -> policy -> weather -> decide -> explain.
 
     `vlm` is passed in so tests can use a fake and the fine-tuned model can plug in later.
     Pass summarizer=None to skip the LLM summary.
+
+    The defaults are the demo-claim pipeline (weather from a JSON file, summary from the decision
+    notes only). "Try your own claim" passes a live `weather_tool` and rich_summary=True, so the
+    reasoning model also sees the photo findings and the weather numbers. The decision itself
+    always comes from fuse().
+
+    `policy_tool` is how clauses are found. None = the demo way (the claim's own policy). "Try your own
+    claim" passes a tool that searches the whole policy library, because that person has no policy to pick.
     """
 
     def vision_node(state: ClaimState) -> dict:
@@ -58,10 +87,11 @@ def build_graph(
         return {"findings": [vlm.analyze(p)[0] for p in images]}
 
     def policy_node(state: ClaimState) -> dict:
-        return {"policy": policy_search_tool(state["claim"], chroma_dir=chroma_dir)}
+        find = policy_tool or policy_search_tool  # looked up now, not at import time
+        return {"policy": find(state["claim"], chroma_dir=chroma_dir)}
 
     def weather_node(state: ClaimState) -> dict:
-        return {"weather": weather_check_tool(state["claim"], state["claim_dir"])}
+        return {"weather": weather_tool(state["claim"], state["claim_dir"])}
 
     def decide_node(state: ClaimState) -> dict:
         result = fuse(
@@ -79,7 +109,8 @@ def build_graph(
         summary = ""
         if summarizer is not None:
             try:
-                summary = summarizer(result, claim) or ""
+                facts = _summary_facts(state) if rich_summary else []
+                summary = (summarizer(result, claim, facts=facts) if facts else summarizer(result, claim)) or ""
             except Exception:
                 # The summary is cosmetic. It must never block a decision.
                 logger.exception("Claim summary failed")

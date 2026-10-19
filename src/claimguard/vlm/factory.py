@@ -13,4 +13,9 @@ def get_vlm(backend: str | None = None) -> VLMBackend:
 
         return GroqVLM()
 
-    raise ValueError(f"Unknown VLM backend {backend!r}. Available: groq")
+    if backend in ("local_ft", "local_base"):
+        from claimguard.vlm.local_backend import LocalQwenVLM
+
+        return LocalQwenVLM(use_adapter=(backend == "local_ft"))
+
+    raise ValueError(f"Unknown VLM backend {backend!r}. Available: groq, local_ft, local_base")

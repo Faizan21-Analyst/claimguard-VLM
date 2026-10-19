@@ -15,6 +15,7 @@ class Claim(BaseModel):
     claimed_damage_type: DamageType
     component: Component = "unclear"
     incident_date: date | None = None
+    location: str | None = Field(default=None, max_length=120)   # only used by the live weather check
     description: str = ""
 
 

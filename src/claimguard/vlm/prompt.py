@@ -21,3 +21,16 @@ VLM_PROMPT = (
     "(use \"poor\" if the photo is blurry, dark, or too far away)\n"
     "- confidence: a number from 0 to 1\n"
 )
+
+# Short prompt for the fine-tuned local model. Used for BOTH training and inference, so the
+# model sees exactly the same instruction in both. findings/confidence are not trained;
+# VisualFinding fills them with defaults.
+FT_PROMPT = (
+    "You are inspecting a photo submitted with a home insurance claim.\n"
+    "Describe ONLY what is visible in the photo. If you are unsure, use \"unclear\".\n\n"
+    "Return ONE JSON object and nothing else, with exactly these keys:\n"
+    f"- damage_type: one of {_options(DamageType)}\n"
+    f"- severity: one of {_options(Severity)}\n"
+    f"- component: one of {_options(Component)}\n"
+    f"- image_quality: one of {_options(ImageQuality)}\n"
+)

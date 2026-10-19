@@ -2,7 +2,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-from claimguard.agent.perils import WEATHER_PERILS
+from claimguard.agent.perils import WEATHER_PERILS, quote_for
 from claimguard.rag.search import search_policy
 from claimguard.schemas.claim import Claim
 from claimguard.schemas.evidence import PolicyEvidence, WeatherEvidence
@@ -28,6 +28,14 @@ def build_policy_query(claim: Claim) -> str:
     return f"{peril} damage to {component}"
 
 
+def with_quotes(claim: Claim, evidence: list[PolicyEvidence]) -> list[PolicyEvidence]:
+    """Attach to each clause the exact sentence that matters for the claimed peril."""
+    return [
+        c.model_copy(update={"quote": quote_for(c.text, claim.claimed_damage_type, c.section_title) or None})
+        for c in evidence
+    ]
+
+
 def policy_search_tool(
     claim: Claim,
     chroma_dir: Path | str | None = None,
@@ -36,10 +44,13 @@ def policy_search_tool(
 
     No must_mention filter here: fuse() already ignores clauses about other perils.
     """
-    return search_policy(
-        query=build_policy_query(claim),
-        policy_id=claim.policy_id,
-        chroma_dir=chroma_dir,
+    return with_quotes(
+        claim,
+        search_policy(
+            query=build_policy_query(claim),
+            policy_id=claim.policy_id,
+            chroma_dir=chroma_dir,
+        ),
     )
 
 

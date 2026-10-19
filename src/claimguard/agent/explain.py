@@ -18,11 +18,11 @@ MAX_TOKENS = 1500
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
-def _build_prompt(result: FusionResult, claim: Claim) -> str:
+def _build_prompt(result: FusionResult, claim: Claim, facts: list[str] | None = None) -> str:
     notes = "\n".join(f"- {reason}" for reason in result.reasons)
     missing = ", ".join(result.missing_evidence) or "none"
     component = claim.component.replace("_", " ")
-    return (
+    prompt = (
         "Rewrite these insurance claim review notes as 2 to 3 plain sentences for an adjuster.\n"
         "Use ONLY the facts below. Do not add numbers, amounts, payouts or new facts, "
         "and do not change the decision.\n\n"
@@ -31,6 +31,14 @@ def _build_prompt(result: FusionResult, claim: Claim) -> str:
         f"Notes:\n{notes}\n"
         f"Missing evidence: {missing}\n"
     )
+    if facts:
+        extra = "\n".join(f"- {fact}" for fact in facts)
+        prompt += (
+            "\nEvidence behind the decision (you may use these facts, nothing else). "
+            "If the weather data does not confirm the claimed event, say so plainly.\n"
+            f"{extra}\n"
+        )
+    return prompt
 
 
 def _clean(text: str) -> str:
@@ -40,11 +48,11 @@ def _clean(text: str) -> str:
     return _THINK_BLOCK.sub("", text).strip()
 
 
-def summarize(result: FusionResult, claim: Claim, client=None) -> str:
+def summarize(result: FusionResult, claim: Claim, client=None, facts: list[str] | None = None) -> str:
     """Try the main model, then the fallback. Return "" if both fail."""
     settings = load_settings().groq
     client = client or Groq(api_key=settings.api_key.get_secret_value(), timeout=30.0)
-    prompt = _build_prompt(result, claim)
+    prompt = _build_prompt(result, claim, facts)
 
     for model in (settings.model, settings.fallback_model):
         try:

@@ -1,4 +1,4 @@
-
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,6 +12,18 @@ from claimguard.rag.clauses import split_clauses
 
 COLLECTION_NAME = "policies"
 MIN_CHUNK_LENGTH = 40
+
+# Real policy documents have a running header and footer ("Form HS-100 ... Page 2 of 6").
+# Text this close to the top or bottom edge of a page is never part of a clause.
+PAGE_TOP_MARGIN = 60
+PAGE_BOTTOM_MARGIN = 50
+
+# A banner such as "SECTION 3  PERILS WE INSURE AGAINST" sits between clauses but belongs to none.
+SECTION_BANNER = re.compile(r"(?m)^[ \t]*SECTION[ \t]+\d+\b.*$")
+
+# "Hail damage Direct physical loss ..." = a heading run into its sentence (the old demo PDFs).
+# A real, separate heading never has a capitalised word in the middle of its line.
+RUN_ON_HEADING = re.compile(r"[a-z] [A-Z][a-z]")
 
 
 @lru_cache(maxsize=2)
@@ -27,6 +39,26 @@ def get_chroma_collection(chroma_dir: Path | str):
         name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
+
+
+def policy_title(pdf, fallback: str) -> str:
+    """The document's own title: PDF metadata first, then the first line of page 1."""
+    title = ((pdf.metadata or {}).get("title") or "").strip()
+    if title:
+        return title
+    if len(pdf):
+        for line in pdf[0].get_text("text").splitlines():
+            if line.strip():
+                return line.strip()
+    return fallback
+
+
+def section_title(clause_text: str) -> str:
+    """The clause heading when it sits on its own line, else ''."""
+    first = clause_text.strip().splitlines()[0].strip() if clause_text.strip() else ""
+    if not first or len(first) > 60 or first.endswith((".", ":", ";")) or RUN_ON_HEADING.search(first):
+        return ""
+    return first
 
 
 def ingest_policies(
@@ -51,8 +83,13 @@ def ingest_policies(
         policy_id = pdf_path.stem
 
         with pymupdf.open(pdf_path) as pdf:
+            name = policy_title(pdf, fallback=policy_id)
+
             for page_index, page in enumerate(pdf):
-                page_text = page.get_text("text")
+                body = pymupdf.Rect(
+                    0, PAGE_TOP_MARGIN, page.rect.width, page.rect.height - PAGE_BOTTOM_MARGIN
+                )
+                page_text = SECTION_BANNER.sub("", page.get_text("text", clip=body))
 
                 for clause_id, clause_text in split_clauses(page_text):
                     if len(clause_text) < MIN_CHUNK_LENGTH:
@@ -69,6 +106,8 @@ def ingest_policies(
                     metadatas.append(
                         {
                             "policy_id": policy_id,
+                            "policy_name": name,
+                            "section_title": section_title(clause_text),
                             "clause_id": clause_id,
                             "page": page_index + 1,
                         }

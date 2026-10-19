@@ -7,3 +7,9 @@ PyMuPDF
 fastapi
 uvicorn[standard]
 httpx
+python-multipart
+pillow
+torch
+torchvision
+transformers>=4.57
+peft
