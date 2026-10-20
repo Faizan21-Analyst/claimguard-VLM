@@ -96,7 +96,7 @@ def test_finding_rows():
     ])
     assert rows[0]["Photo"] == "1" and rows[0]["Damage"] == "wear and tear"
     assert rows[0]["What the model noted"] == "moss; fading" and rows[0]["Model confidence"] == "50%"
-    assert rows[1]["What the model noted"] == "-"
+    assert rows[1]["What the model noted"] == "notes unavailable"
 
 
 def test_history_rows():
