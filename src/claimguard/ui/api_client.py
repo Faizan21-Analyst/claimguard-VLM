@@ -29,7 +29,7 @@ class ClaimNotFound(ApiError):
 
 
 class ServiceUnavailable(ApiError):
-    """The API answered 502: the assessment service behind it is down."""
+    """The API answered 502 or 503: the assessment service or the image model behind it is down."""
 
 
 class InvalidInput(ApiError):
@@ -84,6 +84,12 @@ class ApiClient:
         if status == 502:
             raise ServiceUnavailable(
                 "The assessment service is temporarily unavailable. Please try again.", status
+            )
+        if status == 503:
+            raise ServiceUnavailable(
+                "The image-analysis model is not available right now (its free GPU time may be used up "
+                "for today). Please try again later.",
+                status,
             )
         if status >= 400:
             raise ApiError(f"The API returned an error (status {status}).", status)

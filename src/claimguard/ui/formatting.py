@@ -123,8 +123,9 @@ def describe_weather(weather: WeatherEvidence | None) -> str:
     return f"{text} {weather.details}" if weather.details else text
 
 
-def format_confidence(value: float) -> str:
-    return f"{value:.0%}"
+def format_confidence(value: float | None) -> str:
+    # None = the model never reported one. Say so; do not show a number that was never measured.
+    return "not reported" if value is None else f"{value:.0%}"
 
 
 def format_time(moment: datetime) -> str:
@@ -141,6 +142,22 @@ def last_review_action(record: AssessmentRecord) -> str:
     return REVIEW_DONE_LABELS.get(action, action)
 
 
+def describe_notes(f: VisualFinding) -> str:
+    """The notes as one line of text. Empty means no model wrote any."""
+    if f.findings:
+        return "; ".join(f.findings)
+    return "notes unavailable"
+
+
+def describe_second_opinion(f: VisualFinding) -> str:
+    """A weak hint, never a verdict: the second model is wrong on damage type about 3 times in 10."""
+    if f.second_opinion_damage is None:
+        return "-"
+    if f.second_opinion_damage == f.damage_type:
+        return "agrees on damage type"
+    return f"differs: {f.second_opinion_damage.replace('_', ' ')}"
+
+
 def finding_rows(findings: list[VisualFinding]) -> list[dict[str, str]]:
     return [
         {
@@ -150,7 +167,7 @@ def finding_rows(findings: list[VisualFinding]) -> list[dict[str, str]]:
             "Part": f.component.replace("_", " "),
             "Photo quality": f.image_quality,
             "Model confidence": format_confidence(f.confidence),
-            "What the model noted": "; ".join(f.findings) or "-",
+            "What the model noted": describe_notes(f),
         }
         for number, f in enumerate(findings, start=1)
     ]

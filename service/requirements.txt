@@ -1,0 +1,14 @@
+# Pinned to the versions of the Colab run that produced the golden-set result (pip freeze there).
+# Different versions or GPU precision can change a small model's answers.
+#
+# torch: ZeroGPU supports almost all versions from 2.1.0 to latest (docs: https://huggingface.co/docs/hub/spaces-zerogpu).
+# The "+cu130" suffix from Colab is a local build tag, so it is dropped here; the Space installs the matching wheel itself.
+# The `spaces` package is already installed on ZeroGPU Spaces, and so is gradio (chosen by sdk_version in README.md).
+torch==2.11.0
+# torchvision: Qwen3-VL's processor (video preprocessor) refuses to load without it. 0.26.x is the release paired with torch 2.11.
+torchvision==0.26.0
+transformers==5.20.2
+peft==0.21.2
+accelerate==1.15.0
+pillow
+huggingface_hub

@@ -13,8 +13,9 @@ from claimguard.schemas.claim import Claim
 
 logger = logging.getLogger(__name__)
 
-# Reasoning models spend tokens thinking before they answer, so leave plenty of room.
-MAX_TOKENS = 1500
+# Groq's free tier allows about 1000 output tokens per minute for Qwen3.8 and refuses any request that asks for
+# more. A 2-3 sentence summary needs ~100 tokens once thinking is switched off (see summarize()).
+MAX_TOKENS = 400
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
@@ -60,6 +61,9 @@ def summarize(result: FusionResult, claim: Claim, client=None, facts: list[str] 
                 model=model,
                 temperature=0,
                 max_tokens=MAX_TOKENS,
+                # Qwen3.8 thinks first unless told not to, and thinking would use up the budget. Other models
+                # (the fallback) reject or ignore this field, so it is only sent to Qwen3.8.
+                extra_body={"reasoning_effort": "none"} if "qwen3.8" in model else None,
                 messages=[{"role": "user", "content": prompt}],
             )
             choice = response.choices[0]

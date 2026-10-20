@@ -1,0 +1,32 @@
+# Secrets: never in an image
+.env
+.env.*
+!.env.example
+
+# Git, virtualenv, caches
+.git
+.github
+cl_env
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Big or local-only things the deployed app never reads
+models/
+results/
+build/
+mlruns/
+training/
+tests/
+*.zip
+*.safetensors
+colab_bundle.zip
+
+# Local state: the image builds its own indexes, and users create their own claims
+data/processed/
+data/user_claims/
+user_claims/
+user_claims.db
+data/raw/images/
+data/golden/images/

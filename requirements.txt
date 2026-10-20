@@ -13,3 +13,5 @@ torch
 torchvision
 transformers>=4.57
 peft
+gradio_client
+scikit-learn

@@ -17,6 +17,15 @@ SAFE_FALLBACK = VisualFinding(
 )
 
 
+class ModelUnavailable(RuntimeError):
+    """The model could not be reached, or has no capacity right now (daily GPU quota, queue, timeout, service down).
+
+    Deliberately NOT a ValueError: analyze() turns a ValueError (bad model output) into an "unclear" photo, and a
+    photo must never be called unclear just because a server was down. This error travels up unchanged, so the
+    caller can show an honest message or switch to a fallback that is recorded as such.
+    """
+
+
 class VLMBackend(ABC):
     """Anything that can turn one photo into a VisualFinding."""
 
@@ -25,6 +34,15 @@ class VLMBackend(ABC):
     @abstractmethod
     def _raw(self, image_path: Path) -> str:
         """One model call. Return the model's raw text for the image."""
+
+    def analyze_traced(self, image_path: Path | str, retries: int = 1) -> tuple[VisualFinding, bool, str]:
+        """Like analyze(), plus the name of the backend that really produced the answer.
+
+        A plain backend always answers as itself. FallbackVLM overrides this to say when a fallback answered,
+        so the saved assessment never claims a model that did not produce it.
+        """
+        finding, ok = self.analyze(image_path, retries)
+        return finding, ok, self.name
 
     def analyze(self, image_path: Path | str, retries: int = 1) -> tuple[VisualFinding, bool]:
         """Return (finding, json_valid).

@@ -1,0 +1,19 @@
+# Runtime only. torch is NOT listed: the Dockerfile installs the CPU build first,
+# so the image stays small and sentence-transformers finds it already there.
+pydantic==2.14.0
+pydantic-settings==2.15.0
+python-dotenv==1.2.4
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+httpx==0.28.1
+groq==1.7.0
+gradio_client==2.7.2
+pymupdf==1.28.2
+pillow==12.3.0
+chromadb==1.5.9
+sentence-transformers==6.1.0
+transformers==5.19.0
+langgraph==1.2.15
+streamlit==1.66.0
+pandas==3.0.6

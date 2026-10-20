@@ -34,3 +34,13 @@ FT_PROMPT = (
     f"- component: one of {_options(Component)}\n"
     f"- image_quality: one of {_options(ImageQuality)}\n"
 )
+
+# For the optional notes writer (a second model next to the fine-tuned one). It is NOT asked for severity, part,
+# quality or confidence: it only describes what it sees, plus one damage type used as a weak second opinion.
+NOTES_PROMPT = (
+    "You are looking at a photo submitted with a home insurance claim.\n"
+    "Describe ONLY what is visible in the photo. Do not decide coverage, cost, payout or fault.\n\n"
+    "Return ONE JSON object and nothing else, with exactly these keys:\n"
+    f"- damage_type: one of {_options(DamageType)}\n"
+    "- findings: a list of up to 6 short phrases (under 12 words each) describing visible evidence\n"
+)

@@ -20,6 +20,7 @@ from claimguard.api.models import AssessmentRecord, ReviewRecord, ReviewRequest
 from claimguard.api.uploads import normalize_photo
 from claimguard.schemas.claim import Claim, ClaimAssessment
 from claimguard.schemas.visual import Component
+from claimguard.vlm.base import ModelUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +135,9 @@ def create_app(
         if graph_instance is None:
             from claimguard.agent.graph import build_graph
             from claimguard.vlm.factory import get_vlm
+            from claimguard.vlm.notes import get_notes_writer
 
-            graph_instance = build_graph(get_vlm())
+            graph_instance = build_graph(get_vlm(), notes=get_notes_writer())
         return graph_instance
 
     def make_record(row: dict) -> AssessmentRecord:
@@ -192,6 +194,9 @@ def create_app(
                 assessment = ClaimAssessment.model_validate(output["assessment"])
             else:
                 raise TypeError("Graph returned an unexpected result.")
+        except ModelUnavailable as exc:
+            logger.warning("Image model unavailable for claim %s: %s", claim_id, exc)
+            raise HTTPException(status_code=503, detail="The image-analysis model is not available right now.") from exc
         except groq.APIError as exc:
             logger.exception("Groq API call failed for claim %s", claim_id)
             raise HTTPException(
@@ -228,6 +233,7 @@ def create_app(
             from claimguard.agent.library import make_library_policy_tool
             from claimguard.agent.weather_live import make_live_weather_tool
             from claimguard.vlm.factory import get_vlm
+            from claimguard.vlm.notes import get_notes_writer
 
             w = settings.weather
             r = settings.rag
@@ -239,6 +245,7 @@ def create_app(
                 # No policy to pick: every document of the library is searched.
                 policy_tool=make_library_policy_tool(r.library_dir, r.library_chroma_dir, r.library_top_k),
                 rich_summary=True,
+                notes=get_notes_writer(),
             )
         return live_graph_instance
 
@@ -380,6 +387,9 @@ def create_app(
                 assessment = ClaimAssessment.model_validate(output["assessment"])
             else:
                 raise TypeError("Graph returned an unexpected result.")
+        except ModelUnavailable as exc:
+            logger.warning("Image model unavailable for user claim %s: %s", claim_id, exc)
+            raise HTTPException(status_code=503, detail="The image-analysis model is not available right now.") from exc
         except groq.APIError as exc:
             logger.exception("Groq API call failed for user claim %s", claim_id)
             raise HTTPException(

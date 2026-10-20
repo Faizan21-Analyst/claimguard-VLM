@@ -233,3 +233,5 @@ results/
 data/user_claims/
 user_claims/
 user_claims.db
+.env.*
+!.env.example

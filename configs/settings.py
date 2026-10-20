@@ -77,6 +77,21 @@ class VlmSettings(BaseSettings):
     local_max_new_tokens: int = Field(default=80, ge=16)
     local_dtype: str = "auto"   # auto = float16 on GPU, bfloat16 on CPU; or float16 / bfloat16 / float32
 
+    # Remote GPU service (backend "remote_ft"): the fine-tuned model on a Hugging Face ZeroGPU Space.
+    remote_space: str = ""                  # "username/space-name" or a full URL
+    remote_token: SecretStr | None = None   # Hugging Face token; its owner's free GPU time is what gets used
+    remote_api_name: str = "/analyze"
+    remote_timeout_s: float = Field(default=90.0, gt=0)   # queue + wake-up + generation
+    # What to use when the GPU service is unavailable. "none" = show an error instead.
+    # A fallback is always written into the saved assessment's model_version.
+    remote_fallback: str = "groq"
+    remote_cooldown_s: float = Field(default=300.0, ge=0)  # after a failure, skip the GPU service for this long
+
+    # Optional second model that only WRITES NOTES (visible evidence) for models that do not write them.
+    # "none" = off (the notes column shows that the model does not produce notes). "groq" = use Groq.
+    notes_backend: str = "none"
+    notes_timeout_s: float = Field(default=30.0, gt=0)
+
 class GroqSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="GROQ_",
