@@ -370,7 +370,8 @@ Design notes:
 - Roof hail damage: [deldetect / roof-shingle-hail-damage](https://universe.roboflow.com/deldetect/roof-shingle-hail-damage), CC BY 4.0.
 - Roof wind damage: [deldetect / roof-wind-damage](https://universe.roboflow.com/deldetect/roof-wind-damage), CC BY 4.0.
 - House damage: [house-damages / house-damage-boxes](https://universe.roboflow.com/house-damages/house-damage-boxes), CC BY 4.0.
-- Intact-roof photos were collected from the web by the author for a private portfolio project; their licences are unverified, so **the photos are not included in this repository**.
+- Three hail demo-claim photos are taken from the golden split of the roof-hail dataset above and keep their CC BY 4.0 licence.
+- Intact-roof photos were collected from the web by the author for a private portfolio project; their licences are unverified, so **those photos are not included in this repository**.
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0, free for non-commercial use).
 - Policy documents are synthetic documents written for this project.
 

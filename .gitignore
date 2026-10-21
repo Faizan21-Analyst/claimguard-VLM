@@ -216,6 +216,8 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 data/synthetic/claims/*/images/*
+# ...except the demo photos (from the CC BY 4.0 datasets, see README); every other file in there stays private
+!data/synthetic/claims/*/images/photo_1.jpg
 # Streamlit
 .streamlit/secrets.toml
 data/processed

@@ -29,11 +29,15 @@ _prepare_lock = threading.Lock()
 
 
 def _fingerprint(library_dir: Path) -> str:
-    """Changes whenever a PDF is added, removed, renamed or edited."""
+    """Changes whenever a PDF is added, removed, renamed or edited.
+
+    Based on the file CONTENT, not the modified time: a container image keeps file contents but not exact
+    timestamps, and a changed timestamp alone would rebuild the whole search index on every cold start.
+    """
     digest = hashlib.sha256()
     for pdf in sorted(library_dir.glob("*.pdf")):
-        stat = pdf.stat()
-        digest.update(f"{pdf.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+        digest.update(pdf.name.encode())
+        digest.update(hashlib.sha256(pdf.read_bytes()).digest())
     return digest.hexdigest()
 
 

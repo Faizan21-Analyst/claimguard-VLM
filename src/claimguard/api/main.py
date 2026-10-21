@@ -3,6 +3,7 @@ import logging
 import re
 import secrets
 import shutil
+import threading
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
@@ -59,10 +60,26 @@ def create_app(
     max_photo_mb = settings.api.max_photo_mb
     live_graph_instance = live_graph
 
+    def warm_up() -> None:
+        """Load the heavy parts (torch, the embedding model, the search index) while the app is waking up,
+        so the first claim after a cold start does not have to wait for them. An optimisation only."""
+        try:
+            from claimguard.agent.library import prepare_library
+            from claimguard.rag.ingest import get_embedding_model
+
+            r = settings.rag
+            get_embedding_model(r.embedding_model)
+            prepare_library(r.library_dir, r.library_chroma_dir)
+            logging.getLogger("uvicorn.error").info("Warm-up finished")
+        except Exception:  # noqa: BLE001 - the first claim simply loads these itself instead
+            logger.warning("Warm-up failed", exc_info=True)
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         db.init_db(database_path)
         user_claims_db.init_user_db(user_db)
+        if graph is None and live_graph is None:  # tests inject their own graph and need no warm-up
+            threading.Thread(target=warm_up, daemon=True).start()
         yield
 
     app = FastAPI(title="ClaimGuard AI API", version="1.0.0", lifespan=lifespan)
